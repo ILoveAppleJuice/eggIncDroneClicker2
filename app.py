@@ -4,17 +4,27 @@ from mss import mss
 from PIL import Image
 import pyautogui
 import math
-import keyboard
+
+from pynput.keyboard import Key, Listener
+from pynput import keyboard
+from pynput.mouse import Button, Controller
+
+mouse = Controller()
+
 
 #wha
 pyautogui.PAUSE = 0
 
 bounding_box = {'top': 270, 'left': 680, 'width': 500,'height': 550}
+# for macos:  bounding_box = {'top': 270, 'left': 600, 'width': 700,'height': 630}
+
 sct = mss()
 
 brownLower = np.array([193,152,79])
 brownUpper = np.array([193,152,79])
 
+
+resScale = 1 #   2 on macos for whatever reason
 imgScale = 1
 
 params = cv2.SimpleBlobDetector.Params()
@@ -43,25 +53,29 @@ def detectBlobs(img):
 def drawBlobs(img,keypoints):
     img_with_keypoints = cv2.drawKeypoints(img, keypoints, np.array([]), (255,0,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     return img_with_keypoints
-
-
 prevBlobs = []
-while True:
-    if keyboard.is_pressed("b"):
-        break
+running = True
 
+while running:
+    # with keyboard.Events() as events:
+    #     event = events.get(1)
+    #     if event:
+    #         print(event.key)
+    #         if event.key == keyboard.KeyCode.from_char("b"):
+    #             running = False
+                
     sct_img = sct.grab(bounding_box)
     img = np.array(sct_img)
     img = cv2.cvtColor(img,cv2.COLOR_BGRA2RGB) #do image processing in RGB for simplicity sake
-    
-    img = cv2.resize(img,None,fx=imgScale,fy=imgScale)
+    #print(img.shape)
+    #img = cv2.resize(img,None,fx=imgScale,fy=imgScale)
 
     #first filter out image for the brown box color on the drone
     img = filterImg(img)
     #then run blob detection to find clumps of the white pixel from the binary mask generated from the filter
     keypoints = detectBlobs(img)
     img = drawBlobs(img,keypoints)
-
+    
     if prevBlobs:
         #init a list for blobs that changed in position
         changeBlobs = []
@@ -81,11 +95,14 @@ while True:
             pt = (int(pt[0]),int(pt[1]))
 
             #draw circle
-            cv2.circle(img,pt,10,[0,255,0],2)
+            cv2.circle(img,pt,10,[0,255,0],4)
 
             #do mouse actions
-            pyautogui.moveTo(bounding_box["left"] + int(pt[0]/imgScale), bounding_box["top"] + int(pt[1]/imgScale),_pause=False)
+            mouse.position = (bounding_box["left"] + int(pt[0]/(imgScale * resScale)), bounding_box["top"] + int(pt[1]/(imgScale*resScale)))
+            
+            #pyautogui.moveTo(bounding_box["left"] + int(pt[0]/imgScale), bounding_box["top"] + int(pt[1]/imgScale),_pause=False)
             pyautogui.leftClick()
+    #print(mouse.position)
 
     prevBlobs = keypoints
 
@@ -95,5 +112,6 @@ while True:
     
     if (cv2.waitKey(1) & 0xFF) == ord('q'):
         break
+
 
 cv2.destroyAllWindows()
