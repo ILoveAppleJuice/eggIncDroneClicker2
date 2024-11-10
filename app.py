@@ -15,7 +15,7 @@ sct = mss()
 brownLower = np.array([193,152,79])
 brownUpper = np.array([193,152,79])
 
-imgScale = 2
+imgScale = 1
 
 params = cv2.SimpleBlobDetector.Params()
 params.filterByColor = True
